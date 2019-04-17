@@ -10,6 +10,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import SVC, LinearSVC
 from sklearn.pipeline import Pipeline
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import NearestCentroid
 
 stop_words = set(stopwords.words('english'))
 
@@ -25,17 +26,20 @@ def make_nb():
 					   ('tfidf', TfidfTransformer()),
 					   ('clf', OneVsRestClassifier(MultinomialNB(fit_prior = True, class_prior = None)))])
 	#nb_clf.set_params(clf__alpha = 0.01, tfidf__use_idf = True, vect__ngram_range = (1, 2))
-	return nb_clf
+	return OneVsRestClassifier(MultinomialNB(fit_prior = True, class_prior = None))
 
 def make_svm():
 	svm_clf = Pipeline([('vect', CountVectorizer(stop_words = 'english')),
                         ('tfidf', TfidfTransformer()),
    					   	('clf', OneVsRestClassifier(LinearSVC(), n_jobs = 1))])
 	#svm_clf.set_params(clf__alpha = 0.01, tfidf__use_idf = True, vect__ngram_range = (1, 1))
-	return svm_clf
+	return OneVsRestClassifier(LinearSVC(), n_jobs = 1)
 
 def make_knn():
 	knn_clf = Pipeline([('vect', CountVectorizer(stop_words = 'english')),
                         ('tfidf', TfidfTransformer()),
    					   	('clf', OneVsRestClassifier(KNeighborsClassifier(n_neighbors = 5)))])
-	return knn_clf
+	return OneVsRestClassifier(KNeighborsClassifier(n_neighbors = 5))
+
+def make_rocchio():
+	return OneVsRestClassifier(NearestCentroid())
