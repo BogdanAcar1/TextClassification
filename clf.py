@@ -13,15 +13,13 @@ mn_nb_params = {
 linear_svm_params = {
 	'vect__ngram_range': [(1, 1), (1, 2)],
 	'tfidf__use_idf': (True, False),
-	'clf__estimator__penalty': ('l1', 'l2'),
-	'clf__estimator__loss': ('hinge', 'squared_hinge'),
+	'clf__estimator__C': [0.001, 0.01, 0.1, 1, 10]
 }
 
 knn_params = {
-	#'vect__ngram_range': [(1, 1), (1, 2)],
-	#'tfidf__use_idf': (True, False),
+	'vect__ngram_range': [(1, 1), (1, 2)],
+	'tfidf__use_idf': (True, False),
 	'clf__estimator__n_neighbors': [3, 5, 7, 9],
-	#'clf__estimator__algorithm': ['ball_tree', 'kd_tree', 'auto']
 }
 
 def find_best_params(clf, parameters, train_data, train_targets):
@@ -39,7 +37,7 @@ def make_multinomial_nb():
 def make_linear_svm():
 	linear_svm_clf = Pipeline([('vect', CountVectorizer(stop_words = 'english')),
                         ('tfidf', TfidfTransformer()),
-   					   	('clf', OneVsRestClassifier(LinearSVC(), n_jobs = 1))])
+   					   	('clf', OneVsRestClassifier(LinearSVC(C = 0.01), n_jobs = 1))])
 	return linear_svm_clf
 
 def make_knn():
@@ -50,6 +48,3 @@ def make_knn():
 
 def make_rocchio():
 	return OneVsRestClassifier(NearestCentroid())
-
-if __name__ == '__main__':
-	pass

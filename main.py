@@ -4,12 +4,21 @@ from os.path import isfile, join
 import re
 from clf import *
 import numpy as np
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support, classification_report
 from sklearn import preprocessing
-from pandas import DataFrame
+from process import *
 
-lb = preprocessing.MultiLabelBinarizer()
 top_categories = ["earn", "acq", "money-fx", "grain", "crude", "trade", "interest", "ship", "wheat", "corn"]
+
+CORPUS_PATH = "reuters21578-xml"
+CLASSES_PATH = "reuters21578-xml/all-topics-strings.lc.txt"
+
+def read_classes(classes_path):
+	classes = []
+	with open(classes_path, "r") as classes_in:
+		classes = classes_in.readlines()
+	classes = [c.strip() for c in classes]
+	return classes
 
 def read_dataset(dataset_path):
 	 files = [join(dataset_path, f) for f in listdir(dataset_path) if isfile(join(dataset_path, f)) and re.compile("reut2-[0-9]{3}.xml").match(f)]
@@ -19,10 +28,9 @@ def parse_xml(xml_file, train_data, train_targets, test_data, test_targets):
 	tree = ET.parse(xml_file)
 	root = tree.getroot()
 	for article in root.findall("REUTERS"):
-		if article.find("TEXT").find("BODY") != None: #and article.get("TOPICS") != None:
-			text = article.find("TEXT").find("BODY").text
-			topics = [topic.text for topic in article.find("TOPICS").findall("D")]
-			labels = [top_categories.index(topic) for topic in topics if topic in top_categories]
+		if article.find("TEXT").find("BODY") != None:
+			text = process_text(article.find("TEXT").find("BODY").text, lemmatization = True)
+			labels = [topic.text for topic in article.find("TOPICS").findall("D")]
 			if labels != []:
 				if article.get("LEWISSPLIT") == "TRAIN":
 					train_data.append(text)
@@ -32,6 +40,7 @@ def parse_xml(xml_file, train_data, train_targets, test_data, test_targets):
 					test_targets.append(labels)
 
 def build_dataset(dataset_path):
+	lb = preprocessing.MultiLabelBinarizer(read_classes(CLASSES_PATH))
 	dataset = read_dataset(dataset_path)
 	train_data, train_targets, test_data, test_targets = [], [], [], []
 	for xml_file in dataset:
@@ -41,42 +50,20 @@ def build_dataset(dataset_path):
 	return train_data, np.array(train_targets), test_data, np.array(test_targets)
 
 def test_models(clfs, train_data, train_targets, test_data, test_targets):
-	metrics = {
-		clf.named_steps['clf'].estimator.__class__.__name__: {
-	        "precision": [],
-	        "recall": [],
-	        "fscore": []
-	    } for clf in clfs
-	}
-
+	reports = {}
+	all_labels = read_classes(CLASSES_PATH)
+	labels = [all_labels.index(c) for c in top_categories]
 	for clf in clfs:
 		clf.fit(train_data, train_targets)
-		predicted = clf.predict(test_data)
-		precision, recall, fscore, _ =  precision_recall_fscore_support(test_targets, predicted, average = None, warn_for = tuple())
-		micro_avg =  precision_recall_fscore_support(test_targets, predicted, average = "micro", warn_for = tuple())
-		metrics[clf.named_steps['clf'].estimator.__class__.__name__]["precision"] = precision
-		metrics[clf.named_steps['clf'].estimator.__class__.__name__]["recall"] = recall
-		metrics[clf.named_steps['clf'].estimator.__class__.__name__]["fscore"] = fscore
-		metrics[clf.named_steps['clf'].estimator.__class__.__name__]["micro_avg"] = micro_avg
-	return metrics
-
-def display_metrics(metrics):
-	clfs = list(metrics.keys())
-	fscores = {clf: metrics[clf]["fscore"] for clf in clfs}
-	classes = {"classes": top_categories}
-	fscores = {**classes, **fscores}
-	micro_avg = {"classes": "micro-avg"}
-	micro_avg = {**micro_avg, **{clf: metrics[clf]["micro_avg"][2] for clf in clfs}}
-	micro_avg = DataFrame(micro_avg, index = [0])
-	fscores = DataFrame(fscores).append(micro_avg)
-	print(fscores)
+		test_predicted = clf.predict(test_data)
+		report = classification_report(test_targets, test_predicted, target_names = top_categories, labels = labels)
+		print(report)
+		report = classification_report(test_targets, test_predicted, output_dict = True, target_names = top_categories, labels = labels)
+		reports[clf.named_steps['clf'].estimator.__class__.__name__] = report
+	return reports
 
 if __name__ == '__main__':
-	train_data, train_targets, test_data, test_targets = build_dataset("reuters21578-xml")
-	# clf = make_knn() # make_linear_svm()
-	# print(clf.named_steps['clf'].estimator.get_params().keys())
-	# find_best_params(clf, knn_params, train_data, train_targets)
-
-	models = [make_multinomial_nb(), make_linear_svm(), make_knn()]
+	train_data, train_targets, test_data, test_targets = build_dataset(CORPUS_PATH)
+	models = [make_multinomial_nb(), make_linear_svm(),]# make_knn()]
 	metrics = test_models(models, train_data, train_targets, test_data, test_targets)
-	display_metrics(metrics)
+	print(metrics)
