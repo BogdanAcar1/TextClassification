@@ -23,5 +23,5 @@ if __name__ == '__main__':
 	train_data, train_targets, test_data, test_targets = get_top_dataset()
 	models = [make_multinomial_nb(), make_linear_svm(), make_knn()]
 	metrics = test_models(models, train_data, train_targets, test_data, test_targets)
-	with open("metrics.out", "w") as metrics_out:
+	with open("metrics.json", "w") as metrics_out:
 		metrics_out.write(json.dumps(metrics, indent = 2));
