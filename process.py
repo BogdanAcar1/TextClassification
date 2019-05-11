@@ -2,13 +2,13 @@ from nltk.tokenize import word_tokenize
 from nltk.stem.porter import PorterStemmer
 from nltk.stem import WordNetLemmatizer
 import string
+from nltk.corpus import stopwords
+stop_words = set(stopwords.words('english'))
 
-def process_text(text, stemming = False, lemmatization = False):
-    tokens = word_tokenize(text)
+
+def process_tokens(tokens, stemming = False, lemmatization = False):
     tokens = [w.lower() for w in tokens]
-    table = str.maketrans('', '', string.punctuation)
-    stripped = [w.translate(table) for w in tokens]
-    words = [word for word in stripped if word.isalpha()]
+    words = [word for word in tokens if word.isalpha() and word not in stop_words]
     if stemming == True:
         stemmer = PorterStemmer()
         words = [stemmer.stem(word) for word in words]
